@@ -24,3 +24,6 @@ Java email sender and using algorithm to calculate who will on-call engineer.
 ERD diagram:
 ![img.png](img.png)
 
+
+System Design:
+![alt text](image.png)
