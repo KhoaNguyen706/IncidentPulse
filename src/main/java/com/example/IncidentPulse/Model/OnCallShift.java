@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 public class OnCallShift {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name="actor_user_id")

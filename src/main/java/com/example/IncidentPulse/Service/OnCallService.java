@@ -4,6 +4,8 @@ import com.example.IncidentPulse.DTO.Request.OnCallShiftRequest;
 import com.example.IncidentPulse.DTO.Response.OnCallShiftDTO;
 import com.example.IncidentPulse.Exception.AppException;
 import com.example.IncidentPulse.Exception.ErrorCode;
+
+import com.example.IncidentPulse.Mapper.UserMapperImpl;
 import com.example.IncidentPulse.Model.OnCallShift;
 import com.example.IncidentPulse.Model.User;
 import com.example.IncidentPulse.Repository.OnCallShiftRepository;
@@ -17,10 +19,12 @@ public class OnCallService {
 
     private final OnCallShiftRepository callShiftRepository;
     private final UserRepository userRepository;
+    private final UserMapperImpl userMapper;
 
-    public OnCallService(OnCallShiftRepository onCallShiftRepository, UserRepository userRepository){
+    public OnCallService(OnCallShiftRepository onCallShiftRepository, UserRepository userRepository, UserMapperImpl userMapper){
         this.callShiftRepository = onCallShiftRepository;
         this.userRepository = userRepository;
+        this.userMapper = userMapper;
     }
 
     public OnCallShiftDTO getUserOnCallNow(){
@@ -29,14 +33,14 @@ public class OnCallService {
                 .orElseThrow(() -> new AppException(ErrorCode.NO_ON_CALL_ENGINEER));
         
         return OnCallShiftDTO.builder()
-                .user(currentShift.getUser_id())
+                .user(userMapper.toResponse(currentShift.getUser_id()))
                 .startedAt(currentShift.getStartedAt())
                 .endAt(currentShift.getEndAt())
                 .build();
     }
 
-    public OnCallShiftDTO createOnCallShift(OnCallShiftRequest request){
-        User user = userRepository.findById(request.getUserId())
+    public OnCallShiftDTO createOnCallShift(Long userId, OnCallShiftRequest request){
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         
         OnCallShift onCallShift = new OnCallShift();
@@ -48,7 +52,27 @@ public class OnCallService {
         OnCallShift savedShift = callShiftRepository.save(onCallShift);
         
         return OnCallShiftDTO.builder()
-                .user(savedShift.getUser_id())
+                .user(userMapper.toResponse(savedShift.getUser_id()))
+                .startedAt(savedShift.getStartedAt())
+                .endAt(savedShift.getEndAt())
+                .build();
+    }
+
+    public OnCallShiftDTO createOnCallShiftForCurrentUser(OnCallShiftRequest request, org.springframework.security.core.Authentication authentication){
+        String username = authentication.getName();
+        User user = userRepository.findUserByUsername(username)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        OnCallShift onCallShift = new OnCallShift();
+        onCallShift.setUser_id(user);
+        onCallShift.setStartedAt(request.getStartedAt());
+        onCallShift.setEndAt(request.getEndAt());
+        onCallShift.setCreatedAt(LocalDateTime.now());
+
+        OnCallShift savedShift = callShiftRepository.save(onCallShift);
+
+        return OnCallShiftDTO.builder()
+                .user(userMapper.toResponse(savedShift.getUser_id()))
                 .startedAt(savedShift.getStartedAt())
                 .endAt(savedShift.getEndAt())
                 .build();

@@ -28,12 +28,22 @@ public class OnCallShiftController {
     }
 
     @PreAuthorize("hasRole(ADMIN)")
-    @PostMapping
-    public ApiResponse<OnCallShiftDTO> createOnCallShift(@RequestBody OnCallShiftRequest request){
-        OnCallShiftDTO onCallShift = onCallService.createOnCallShift(request);
+    @PostMapping("/{userId}")
+    public ApiResponse<OnCallShiftDTO> createOnCallShift(@PathVariable Long userId, @RequestBody OnCallShiftRequest request){
+        OnCallShiftDTO onCallShift = onCallService.createOnCallShift(userId, request);
         return ApiResponse.<OnCallShiftDTO>builder()
                 .data(onCallShift)
                 .message("On-call shift created successfully")
+                .build();
+    }
+
+    @PreAuthorize("hasAnyRole('ENGINEER','ADMIN')")
+    @PostMapping("/me")
+    public ApiResponse<OnCallShiftDTO> createMyOnCallShift(org.springframework.security.core.Authentication authentication, @RequestBody OnCallShiftRequest request){
+        OnCallShiftDTO onCallShift = onCallService.createOnCallShiftForCurrentUser(request, authentication);
+        return ApiResponse.<OnCallShiftDTO>builder()
+                .data(onCallShift)
+                .message("Your on-call shift created successfully")
                 .build();
     }
 }

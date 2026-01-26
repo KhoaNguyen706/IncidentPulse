@@ -36,4 +36,25 @@ src/main/resources/application.yml
 # Ignore application.properties file
 application.properties
 
+# Env files and secrets
+.env
+.env.*
+/src/main/resources/application.yml
+/src/main/resources/application.properties
+
+# Keystores / keys
+*.jks
+*.keystore
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+*.log
+
+# Node
+node_modules/
+
 pom.xml
+
+schema.sql

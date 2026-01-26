@@ -14,7 +14,6 @@ import java.time.LocalDateTime;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class OnCallShiftRequest {
-    Long userId;
     LocalDateTime startedAt;
     LocalDateTime endAt;
 }

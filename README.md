@@ -27,3 +27,10 @@ ERD diagram:
 
 System Design:
 ![alt text](image.png)
+
+
+Email Send in Laptop:
+![alt text](image-1.png)
+
+Email Send in Phone:
+![alt text](emailinphone.jpg)
