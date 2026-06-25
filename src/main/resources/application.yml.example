@@ -39,3 +39,11 @@ app:
 auth:
   refresh:
     days: 14
+
+security:
+  jwt:
+    # Generate with: openssl rand -base64 32
+    secretBase64: <BASE64_SECRET_AT_LEAST_32_BYTES>
+    issuer: incidentpulse
+    audience: incidentpulse-api
+    accessTokenMinutes: 15

@@ -11,7 +11,6 @@ import com.example.IncidentPulse.Model.User;
 import com.example.IncidentPulse.Repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -23,11 +22,13 @@ public class UserService{
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final PasswordEncoder passwordEncoder;
 
     @Autowired
-    public UserService(UserRepository userRepository, UserMapper userMapper){
+    public UserService(UserRepository userRepository, UserMapper userMapper, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.userMapper = userMapper;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public UserResponse addAUser(UserRequest userRequest){
@@ -36,7 +37,6 @@ public class UserService{
 
         Optional<User> existingUser = userRepository.findUserByUsername(user.getUsername());
         if(existingUser.isPresent()) throw new AppException(ErrorCode.USER_EXISTED);
-        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
         user.setHashedPassword(passwordEncoder.encode(userRequest.getPassword()));
         User savedUser = userRepository.save(user);
         return userMapper.toResponse(savedUser);

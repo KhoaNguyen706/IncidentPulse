@@ -27,7 +27,7 @@ public class UserController {
         this.userService = userService;
     }
 
-    @PreAuthorize("hasRole(ADMIN)")
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
     public ApiResponse<List<UserResponse>> getAllUser(){
         List<UserResponse> userResponse = userService.getAllUsers();
@@ -40,7 +40,7 @@ public class UserController {
                 .message("Get all users successfully!")
                 .build();
     }
-    @PreAuthorize("hasRole(ADMIN)")
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public  ApiResponse<UserResponse> createAUser(@RequestBody UserRequest userRequest){
             UserResponse userResponse = userService.addAUser(userRequest);
@@ -53,7 +53,7 @@ public class UserController {
                     .build();
 
     }
-    @PreAuthorize("hasRole(ADMIN)")
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{id}")
     public ApiResponse<UpdatedUserResponse> updateAUser(@PathVariable Long id, @RequestBody UpdatedUserRequest updatedUserRequest){
         UpdatedUserResponse userResponse = userService.updateUser(id,updatedUserRequest);
@@ -65,7 +65,7 @@ public class UserController {
                 .message("Updated user successfully!!!")
                 .build();
     }
-    @PreAuthorize("hasRole(ADMIN)")
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteAUser(@PathVariable Long id){
         userService.deleteById(id);

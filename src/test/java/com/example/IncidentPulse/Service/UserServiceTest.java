@@ -17,6 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 import java.util.Optional;
@@ -49,6 +50,9 @@ class UserServiceTest {
 
     @Mock
     private UserMapper userMapper;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
 
     @InjectMocks
     private UserService userService;
@@ -87,6 +91,7 @@ class UserServiceTest {
         // Tell the mocks how to behave for this scenario.
         when(userMapper.toEntity(request)).thenReturn(mappedEntity);
         when(userRepository.findUserByUsername("jane")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode("secret123")).thenReturn("$2a$10$hashedPassword");
         when(userRepository.save(any(User.class))).thenReturn(savedEntity);
         when(userMapper.toResponse(savedEntity)).thenReturn(expectedResponse);
 
@@ -99,8 +104,8 @@ class UserServiceTest {
         ArgumentCaptor<User> savedCaptor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(savedCaptor.capture());
         String storedPassword = savedCaptor.getValue().getHashedPassword();
-        assertThat(storedPassword).isNotNull();
-        assertThat(storedPassword).isNotEqualTo("secret123"); // it was BCrypt-hashed
+        assertThat(storedPassword).isEqualTo("$2a$10$hashedPassword");
+        verify(passwordEncoder).encode("secret123");
     }
 
     @Test
