@@ -15,12 +15,20 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtFilter jwtFilter) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   JwtFilter jwtFilter,
+                                                   LoginRateLimitFilter loginRateLimitFilter,
+                                                   ApiKeyFilter apiKeyFilter) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v*/auth/**").permitAll()
+                        // Webhook is permitted here; ApiKeyFilter enforces the X-API-Key.
+                        .requestMatchers("/api/v*/webhook/**").permitAll()
+                        // WebSocket handshake is permitted; the STOMP CONNECT frame
+                        // is authenticated by StompAuthChannelInterceptor instead.
+                        .requestMatchers("/ws/**").permitAll()
                         .requestMatchers(
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
@@ -32,6 +40,11 @@ public class SecurityConfig {
                         .requestMatchers("/api/v*/incident/**").authenticated()
                         .requestMatchers("/api/v*/users/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
+                // Rate limiter runs first so brute-forced logins are rejected
+                // before any heavier work; the API-key filter guards the webhook
+                // path; then the JWT filter authenticates everything else.
+                .addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

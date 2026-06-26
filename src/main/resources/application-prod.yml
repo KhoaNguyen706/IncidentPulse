@@ -1,0 +1,17 @@
+# Production. Flyway owns the schema; Hibernate only validates and refuses to
+# start on drift. No SQL logging. ALL secrets MUST be supplied via environment
+# variables (see .env.example) - the defaults in application.yml are dev-only
+# placeholders and must not be used in production.
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+logging:
+  level:
+    root: INFO
+    org.springframework.security: WARN

@@ -62,6 +62,9 @@ class IncidentServiceTest {
     @Mock
     private com.example.IncidentPulse.Repository.IncidentHistoryRepository incidentHistoryRepository;
 
+    @Mock
+    private com.example.IncidentPulse.WebSocket.IncidentEventPublisher eventPublisher;
+
     @InjectMocks
     private IncidentService incidentService;
 

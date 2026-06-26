@@ -1,23 +1,30 @@
-# Example application.yml - copy to application.yml and fill in real values.
-# DO NOT commit secrets. Every field below can be overridden by environment
-# variables (Spring's relaxed binding converts e.g. JWT_SECRET -> security.jwt.secretBase64).
-
+# Shared configuration (12-factor: values come from env vars, NO secrets here).
+# Profile-specific overrides live in application-{dev,prod,test}.yml.
+# Active profile defaults to "dev"; set SPRING_PROFILES_ACTIVE=prod in production.
 server:
   port: ${SERVER_PORT:8080}
 
 spring:
   application:
     name: Incident Pulse
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/incidentpulse}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
     password: ${SPRING_DATASOURCE_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   jpa:
-    hibernate:
-      # dev: update | prod: validate (and use Flyway/Liquibase for migrations)
-      ddl-auto: ${SPRING_JPA_DDL_AUTO:update}
-    show-sql: ${SPRING_JPA_SHOW_SQL:false}
+    # Don't keep a DB session open during view rendering; transactions are
+    # explicit at the service layer instead. Avoids accidental lazy-load N+1.
+    open-in-view: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
@@ -30,7 +37,7 @@ spring:
           starttls:
             enable: true
 
-# Actuator - expose only what you need in production
+# Actuator - expose only what you need.
 management:
   endpoints:
     web:
@@ -46,6 +53,15 @@ app:
     username: ${APP_ADMIN_USERNAME:admin}
     email: ${APP_ADMIN_EMAIL:admin@incidentpulse.local}
     password: ${APP_ADMIN_PASSWORD:admin123}
+  rate-limit:
+    login:
+      capacity: ${RATE_LIMIT_LOGIN_CAPACITY:5}
+      refill-tokens: ${RATE_LIMIT_LOGIN_REFILL_TOKENS:1}
+      refill-period-minutes: ${RATE_LIMIT_LOGIN_REFILL_PERIOD_MINUTES:3}
+  webhook:
+    # Shared secret external monitors send in the X-API-Key header.
+    # Empty = webhook ingestion disabled (fails closed). Set in production.
+    api-key: ${WEBHOOK_API_KEY:}
 
 auth:
   refresh:

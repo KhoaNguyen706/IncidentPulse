@@ -31,6 +31,5 @@ System Design:
 
 Email Send in Laptop:
 ![alt text](image-1.png)
-
 Email Send in Phone:
 ![alt text](emailinphone.jpg)

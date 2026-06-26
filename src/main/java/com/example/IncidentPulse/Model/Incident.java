@@ -38,6 +38,13 @@ public class Incident {
 
     String message;
 
+    // Set only for incidents created by external monitors via the webhook.
+    // (source, externalId) is uniquely indexed so the same alert can't create
+    // duplicate incidents. Both null for manually-created incidents.
+    String source;
+
+    String externalId;
+
     LocalDateTime createdAt;
 
     LocalDateTime updatedAt;

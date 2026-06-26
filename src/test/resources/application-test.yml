@@ -1,0 +1,56 @@
+# Test profile: fully self-contained so `mvn test` needs no Postgres/Redis/mail.
+# H2 in PostgreSQL-compatibility mode; Hibernate generates the schema (Flyway off).
+server:
+  port: 0
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:incidentpulse;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+  flyway:
+    enabled: false
+  mail:
+    host: localhost
+    port: 3025
+    username: test@incidentpulse.local
+    password: test
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+app:
+  email:
+    default-recipient: oncall@incidentpulse.local
+  admin:
+    username: admin
+    email: admin@incidentpulse.local
+    password: admin123
+  webhook:
+    api-key: test-webhook-key
+  rate-limit:
+    # High capacity so ordinary integration-test logins never trip the limiter;
+    # the limiter's behaviour is verified directly in a focused unit test.
+    login:
+      capacity: 1000
+      refill-tokens: 1000
+      refill-period-minutes: 1
+
+auth:
+  refresh:
+    days: 14
+
+security:
+  jwt:
+    secretBase64: TzYgDrjAYIKLYuQm/sOFo/O2hldY8yFu67NV8WaDA+9NhHldVc9eRVF4WwUjIMtC
+    issuer: incidentpulse-test
+    audience: incidentpulse-api-test
+    accessTokenMinutes: 15

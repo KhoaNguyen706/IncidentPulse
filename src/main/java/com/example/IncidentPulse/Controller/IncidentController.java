@@ -6,9 +6,14 @@ import com.example.IncidentPulse.DTO.Request.IncidentStatusUpdateRequest;
 import com.example.IncidentPulse.DTO.Response.ApiResponse;
 import com.example.IncidentPulse.DTO.Response.IncidentHistoryResponse;
 import com.example.IncidentPulse.DTO.Response.IncidentResponse;
+import com.example.IncidentPulse.DTO.Response.PageResponse;
+import com.example.IncidentPulse.Model.Incident;
 import com.example.IncidentPulse.Service.IncidentService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -35,6 +40,22 @@ public class IncidentController {
                 .now(LocalDateTime.now())
                 .data(incidentResponse)
                 .message("Create incident completely")
+                .build();
+    }
+
+    @GetMapping
+    public ApiResponse<PageResponse<IncidentResponse>> listIncidents(
+            @RequestParam(required = false) Incident.status status,
+            @RequestParam(required = false) Incident.severity severity,
+            @RequestParam(required = false) String assignee,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        PageResponse<IncidentResponse> page = incidentService.findIncidents(status, severity, assignee, pageable);
+        return ApiResponse.<PageResponse<IncidentResponse>>builder()
+                .code(200)
+                .success(true)
+                .now(LocalDateTime.now())
+                .data(page)
+                .message("Incidents retrieved successfully!!!")
                 .build();
     }
 

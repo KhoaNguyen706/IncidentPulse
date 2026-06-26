@@ -28,19 +28,24 @@ target/
 build/
 !**/src/main/**/build/
 !**/src/test/**/build/
-src/main/resources/application.yml
 
 ### VS Code ###
 .vscode/
 
-# Ignore application.properties file
+# application.yml and application-{dev,prod,test}.yml are committed: they contain
+# only ${ENV_VAR} placeholders, never secrets. Real secrets come from env vars.
+# Keep any machine-local override out of git:
+application-local.yml
+/src/main/resources/application-local.yml
+
+# Ignore application.properties (use YAML instead)
 application.properties
+/src/main/resources/application.properties
 
 # Env files and secrets
 .env
 .env.*
-/src/main/resources/application.yml
-/src/main/resources/application.properties
+!.env.example
 
 # Keystores / keys
 *.jks
@@ -54,7 +59,5 @@ docker-compose.override.yml
 
 # Node
 node_modules/
-
-pom.xml
 
 schema.sql

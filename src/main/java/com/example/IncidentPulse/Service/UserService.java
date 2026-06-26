@@ -6,10 +6,12 @@ import com.example.IncidentPulse.DTO.Response.UpdatedUserResponse;
 import com.example.IncidentPulse.DTO.Response.UserResponse;
 import com.example.IncidentPulse.Exception.AppException;
 import com.example.IncidentPulse.Exception.ErrorCode;
+import com.example.IncidentPulse.ApplicationCofig.CachingConfig;
 import com.example.IncidentPulse.Mapper.UserMapper;
 import com.example.IncidentPulse.Model.User;
 import com.example.IncidentPulse.Repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -51,12 +53,14 @@ public class UserService{
         return userRepository.existsById(id);
     }
 
+    @CacheEvict(cacheNames = CachingConfig.USERS_BY_USERNAME, allEntries = true)
     public void deleteById(Long id) {
 
         if(!IsUserNonExisted(id)) throw new AppException(ErrorCode.USER_NON_EXISTED);
         userRepository.deleteById(id);
     }
 
+    @CacheEvict(cacheNames = CachingConfig.USERS_BY_USERNAME, allEntries = true)
     public UpdatedUserResponse updateUser(Long id, UpdatedUserRequest updatedUserRequest) {
         User user = userRepository.findById(id).map(
                 existUser-> {

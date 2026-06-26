@@ -10,7 +10,9 @@ public enum ErrorCode {
     INVALID_CREDENTIALS(401,"User's credentials is not valid"),
     NO_ON_CALL_ENGINEER(404,"No on-call engineer is currently scheduled"),
     INCIDENT_NOT_FOUND(404,"Incident is not found!!!"),
-    INVALID_STATUS_TRANSITION(400,"That incident status change is not allowed");
+    INVALID_STATUS_TRANSITION(400,"That incident status change is not allowed"),
+    RATE_LIMITED(429,"Too many requests. Please try again later."),
+    INVALID_API_KEY(401,"Invalid or missing API key");
     private final int code;
     private final String message;
 

@@ -4,6 +4,7 @@ import com.example.IncidentPulse.DTO.Request.IncidentRequest;
 import com.example.IncidentPulse.DTO.Request.IncidentStatusUpdateRequest;
 import com.example.IncidentPulse.DTO.Response.IncidentHistoryResponse;
 import com.example.IncidentPulse.DTO.Response.IncidentResponse;
+import com.example.IncidentPulse.DTO.Response.PageResponse;
 import com.example.IncidentPulse.Exception.AppException;
 import com.example.IncidentPulse.Exception.ErrorCode;
 import com.example.IncidentPulse.Mapper.UserMapper;
@@ -13,11 +14,17 @@ import com.example.IncidentPulse.Model.OnCallShift;
 import com.example.IncidentPulse.Model.User;
 import com.example.IncidentPulse.Repository.IncidentHistoryRepository;
 import com.example.IncidentPulse.Repository.IncidentRepository;
+import com.example.IncidentPulse.Repository.IncidentSpecifications;
 import com.example.IncidentPulse.Repository.OnCallShiftRepository;
 import com.example.IncidentPulse.Repository.UserRepository;
+import com.example.IncidentPulse.WebSocket.IncidentEvent;
+import com.example.IncidentPulse.WebSocket.IncidentEventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +47,7 @@ public class IncidentService {
     private final OnCallShiftRepository onCallShiftRepository;
     private final EmailService emailService;
     private final IncidentHistoryRepository incidentHistoryRepository;
+    private final IncidentEventPublisher eventPublisher;
     private static final Logger log = LoggerFactory.getLogger(IncidentService.class);
 
     /*
@@ -70,13 +78,15 @@ public class IncidentService {
                            UserMapper userMapper,
                            OnCallShiftRepository onCallShiftRepository,
                            EmailService emailService,
-                           IncidentHistoryRepository incidentHistoryRepository) {
+                           IncidentHistoryRepository incidentHistoryRepository,
+                           IncidentEventPublisher eventPublisher) {
         this.incidentRepository = incidentRepository;
         this.userRepository = userRepository;
         this.userMapper = userMapper;
         this.onCallShiftRepository = onCallShiftRepository;
         this.emailService = emailService;
         this.incidentHistoryRepository = incidentHistoryRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     public User assignUser() {
@@ -115,9 +125,19 @@ public class IncidentService {
             log.warn("Failed to send assignment email: {}", e.getMessage());
         }
 
+        eventPublisher.publish(IncidentEvent.builder()
+                .id(incident.getId())
+                .type("CREATED")
+                .status(incident.getStatus())
+                .toStatus(incident.getStatus())
+                .actor(currentUser != null ? currentUser.getUsername() : null)
+                .occurredAt(LocalDateTime.now())
+                .build());
+
         return toResponse(incident);
     }
 
+    @Transactional(readOnly = true)
     public IncidentResponse getMyIncident(Authentication authentication) {
         String username = authentication.getName();
         User user = userRepository.findUserByUsername(username)
@@ -168,10 +188,43 @@ public class IncidentService {
         incident.setStatus(to);
         incidentRepository.save(incident);
 
-        recordHistory(incident, getCurrentUser(), from, to,
-                actionTypeFor(to), request.getNote());
+        User actor = getCurrentUser();
+        recordHistory(incident, actor, from, to, actionTypeFor(to), request.getNote());
+
+        eventPublisher.publish(IncidentEvent.builder()
+                .id(incident.getId())
+                .type("STATUS_CHANGED")
+                .status(to)
+                .fromStatus(from)
+                .toStatus(to)
+                .actor(actor != null ? actor.getUsername() : null)
+                .occurredAt(LocalDateTime.now())
+                .build());
 
         return toResponse(incident);
+    }
+
+    /**
+     * Paginated, filtered listing of incidents. Any combination of the three
+     * filters may be supplied (or omitted). Runs inside a read-only transaction
+     * so the LAZY {@code createdBy}/{@code assignedTo} associations can be
+     * resolved when building each response.
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<IncidentResponse> findIncidents(Incident.status status,
+                                                        Incident.severity severity,
+                                                        String assignee,
+                                                        Pageable pageable) {
+        Specification<Incident> spec = Specification.allOf(
+                IncidentSpecifications.hasStatus(status),
+                IncidentSpecifications.hasSeverity(severity),
+                IncidentSpecifications.assignedToUsername(assignee));
+
+        Page<Incident> page = incidentRepository.findAll(spec, pageable);
+        List<IncidentResponse> content = page.getContent().stream()
+                .map(this::toResponse)
+                .toList();
+        return PageResponse.of(page, content);
     }
 
     @Transactional(readOnly = true)
@@ -210,7 +263,7 @@ public class IncidentService {
         };
     }
 
-    private void recordHistory(Incident incident, User actor, Incident.status from,
+    public void recordHistory(Incident incident, User actor, Incident.status from,
                                Incident.status to, IncidentHistory.ActionType actionType, String message) {
         IncidentHistory history = IncidentHistory.builder()
                 .incident(incident)
@@ -223,7 +276,7 @@ public class IncidentService {
         incidentHistoryRepository.save(history);
     }
 
-    private IncidentResponse toResponse(Incident incident) {
+    public IncidentResponse toResponse(Incident incident) {
         return IncidentResponse.builder()
                 .id(incident.getId())
                 .title(incident.getTitle())
