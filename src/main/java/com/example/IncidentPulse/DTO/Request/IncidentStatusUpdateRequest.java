@@ -1,12 +1,9 @@
-package com.example.IncidentPulse.DTO.Response;
-
+package com.example.IncidentPulse.DTO.Request;
 
 import com.example.IncidentPulse.Model.Incident;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-
-import java.time.LocalDateTime;
 
 @Builder
 @AllArgsConstructor
@@ -15,14 +12,11 @@ import java.time.LocalDateTime;
 @Getter
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class IncidentResponse {
-    Long id;
-    String title;
-    UserResponse createdBy;
-    UserResponse assignedTo;
+public class IncidentStatusUpdateRequest {
+
+    // The status we want to move the incident TO.
     Incident.status status;
-    Incident.severity severity;
-    String message;
-    LocalDateTime createdAt;
-    LocalDateTime updatedAt;
+
+    // Optional human note explaining the change (saved into the history trail).
+    String note;
 }

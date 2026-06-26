@@ -59,6 +59,9 @@ class IncidentServiceTest {
     @Mock
     private EmailService emailService;
 
+    @Mock
+    private com.example.IncidentPulse.Repository.IncidentHistoryRepository incidentHistoryRepository;
+
     @InjectMocks
     private IncidentService incidentService;
 
@@ -199,6 +202,7 @@ class IncidentServiceTest {
                 .status(Incident.status.INVESTIGATING)
                 .message("Disk at 98%")
                 .createdBy(userWithId(1L, "reporter"))
+                .assignedTo(user)
                 .build();
 
         when(authentication.getName()).thenReturn("eng");
@@ -225,5 +229,97 @@ class IncidentServiceTest {
                 .isInstanceOf(AppException.class)
                 .extracting(ex -> ((AppException) ex).getErrorCode())
                 .isEqualTo(ErrorCode.USER_NOT_FOUND);
+    }
+
+    // ---------------------------------------------------------------------
+    // updateStatus
+    // ---------------------------------------------------------------------
+
+    @Test
+    @DisplayName("updateStatus: allows OPENED -> INVESTIGATING and records history")
+    void updateStatus_allowsValidTransition() {
+        Incident incident = Incident.builder()
+                .id(5L)
+                .title("API errors")
+                .status(Incident.status.OPENED)
+                .severity(Incident.severity.SEV2)
+                .build();
+
+        com.example.IncidentPulse.DTO.Request.IncidentStatusUpdateRequest request =
+                com.example.IncidentPulse.DTO.Request.IncidentStatusUpdateRequest.builder()
+                        .status(Incident.status.INVESTIGATING)
+                        .note("Looking into it")
+                        .build();
+
+        when(incidentRepository.findById(5L)).thenReturn(Optional.of(incident));
+        when(incidentRepository.save(any(Incident.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        try (MockedStatic<SecurityUtil> securityUtil = mockStatic(SecurityUtil.class)) {
+            securityUtil.when(SecurityUtil::getCurrentUser).thenReturn(userWithId(7L, "eng"));
+
+            IncidentResponse result = incidentService.updateStatus(5L, request);
+
+            assertThat(result.getStatus()).isEqualTo(Incident.status.INVESTIGATING);
+        }
+
+        // The status change must be written to the audit trail exactly once.
+        verify(incidentHistoryRepository).save(any(com.example.IncidentPulse.Model.IncidentHistory.class));
+    }
+
+    @Test
+    @DisplayName("updateStatus: rejects an illegal transition (OPENED -> CLOSED) and writes no history")
+    void updateStatus_rejectsIllegalTransition() {
+        Incident incident = Incident.builder()
+                .id(5L)
+                .status(Incident.status.OPENED)
+                .build();
+
+        com.example.IncidentPulse.DTO.Request.IncidentStatusUpdateRequest request =
+                com.example.IncidentPulse.DTO.Request.IncidentStatusUpdateRequest.builder()
+                        .status(Incident.status.CLOSED)
+                        .build();
+
+        when(incidentRepository.findById(5L)).thenReturn(Optional.of(incident));
+
+        assertThatThrownBy(() -> incidentService.updateStatus(5L, request))
+                .isInstanceOf(AppException.class)
+                .extracting(ex -> ((AppException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.INVALID_STATUS_TRANSITION);
+
+        verify(incidentHistoryRepository, org.mockito.Mockito.never())
+                .save(any(com.example.IncidentPulse.Model.IncidentHistory.class));
+        verify(incidentRepository, org.mockito.Mockito.never()).save(any(Incident.class));
+    }
+
+    @Test
+    @DisplayName("updateStatus: throws INCIDENT_NOT_FOUND when the id does not exist")
+    void updateStatus_throwsWhenIncidentMissing() {
+        when(incidentRepository.findById(404L)).thenReturn(Optional.empty());
+
+        com.example.IncidentPulse.DTO.Request.IncidentStatusUpdateRequest request =
+                com.example.IncidentPulse.DTO.Request.IncidentStatusUpdateRequest.builder()
+                        .status(Incident.status.INVESTIGATING)
+                        .build();
+
+        assertThatThrownBy(() -> incidentService.updateStatus(404L, request))
+                .isInstanceOf(AppException.class)
+                .extracting(ex -> ((AppException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.INCIDENT_NOT_FOUND);
+    }
+
+    // ---------------------------------------------------------------------
+    // getIncidentHistory
+    // ---------------------------------------------------------------------
+
+    @Test
+    @DisplayName("getIncidentHistory: throws INCIDENT_NOT_FOUND when incident does not exist")
+    void getIncidentHistory_throwsWhenMissing() {
+        when(incidentRepository.existsById(404L)).thenReturn(false);
+
+        assertThatThrownBy(() -> incidentService.getIncidentHistory(404L))
+                .isInstanceOf(AppException.class)
+                .extracting(ex -> ((AppException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.INCIDENT_NOT_FOUND);
     }
 }

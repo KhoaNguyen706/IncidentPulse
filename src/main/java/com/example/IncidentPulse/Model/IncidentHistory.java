@@ -4,43 +4,49 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.time.LocalDateTime;
+
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Getter
 @Setter
-@Table(name= "incident_history")
+@Builder
+@Table(name = "incident_history")
 public class IncidentHistory {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name="incident_id")
-    Incident incident_id;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "incident_id")
+    Incident incident;
 
-    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name="actor_user_id")
-    User actor_user_id;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "actor_user_id")
+    User actor;
 
     String message;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    status from_status;
+    ActionType actionType;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    status to_status;
+    Incident.status fromStatus;
 
+    @Enumerated(EnumType.STRING)
+    Incident.status toStatus;
 
-    public enum  status{
-        OPENED,
-        INVESTIGATING,
-        RESOLVED,
-        CLOSED,
+    LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
     }
 
-    public enum action_type {
-        CREATED, ASSIGNED, ACKNOWLEDGED, STATUS_CHANGED, COMMENTED, RESOLVED, CLOSED,
+    public enum ActionType {
+        CREATED, ASSIGNED, ACKNOWLEDGED, STATUS_CHANGED, COMMENTED, RESOLVED, CLOSED
     }
 }

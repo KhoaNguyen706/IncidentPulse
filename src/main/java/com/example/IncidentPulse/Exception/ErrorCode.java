@@ -8,7 +8,9 @@ public enum ErrorCode {
     USER_NON_EXISTED(404,"User is not existed!!!"),
     USER_NOT_FOUND(404,"User is not Found!!!"),
     INVALID_CREDENTIALS(401,"User's credentials is not valid"),
-    NO_ON_CALL_ENGINEER(404,"No on-call engineer is currently scheduled");
+    NO_ON_CALL_ENGINEER(404,"No on-call engineer is currently scheduled"),
+    INCIDENT_NOT_FOUND(404,"Incident is not found!!!"),
+    INVALID_STATUS_TRANSITION(400,"That incident status change is not allowed");
     private final int code;
     private final String message;
 
