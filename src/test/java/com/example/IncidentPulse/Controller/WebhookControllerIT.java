@@ -94,4 +94,34 @@ class WebhookControllerIT {
         JsonNode root = objectMapper.readTree(result.getResponse().getContentAsString());
         return root.path("data").path("id").asLong();
     }
+
+    private String adminAccessToken() throws Exception {
+        MvcResult login = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                Map.of("username", "admin", "password", "admin123"))))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode root = objectMapper.readTree(login.getResponse().getContentAsString());
+        return root.path("data").path("access").asText();
+    }
+
+    @Test
+    void simulate_asAdmin_createsIncident() throws Exception {
+        mockMvc.perform(post("/api/v1/webhook/simulate")
+                        .header("Authorization", "Bearer " + adminAccessToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(alertPayload("simulate-1")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").isNotEmpty())
+                .andExpect(jsonPath("$.data.title").value("API gateway down"));
+    }
+
+    @Test
+    void simulate_withoutAuth_returns403() throws Exception {
+        mockMvc.perform(post("/api/v1/webhook/simulate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(alertPayload("simulate-2")))
+                .andExpect(status().isForbidden());
+    }
 }

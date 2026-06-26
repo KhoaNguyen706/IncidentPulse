@@ -21,6 +21,7 @@ public class UserResponse implements Serializable {
     @java.io.Serial
     private static final long serialVersionUID = 1L;
 
+    Long id;
     String name;
     String username;
     String email;

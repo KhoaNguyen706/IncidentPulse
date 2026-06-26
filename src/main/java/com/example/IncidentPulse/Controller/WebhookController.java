@@ -5,6 +5,7 @@ import com.example.IncidentPulse.DTO.Response.ApiResponse;
 import com.example.IncidentPulse.DTO.Response.IncidentResponse;
 import com.example.IncidentPulse.Service.WebhookService;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -36,6 +37,24 @@ public class WebhookController {
                 .now(LocalDateTime.now())
                 .data(incident)
                 .message("Alert ingested")
+                .build();
+    }
+
+    /**
+     * JWT-protected demo endpoint for the admin UI. Reuses the same ingestion
+     * logic as {@link #ingestAlert} without exposing the webhook API key to
+     * the browser.
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/simulate")
+    public ApiResponse<IncidentResponse> simulateAlert(@Valid @RequestBody WebhookAlertRequest request) {
+        IncidentResponse incident = webhookService.ingestAlert(request);
+        return ApiResponse.<IncidentResponse>builder()
+                .code(200)
+                .success(true)
+                .now(LocalDateTime.now())
+                .data(incident)
+                .message("Alert simulated")
                 .build();
     }
 }

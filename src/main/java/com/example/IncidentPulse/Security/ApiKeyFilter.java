@@ -42,7 +42,12 @@ public class ApiKeyFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !PATH_MATCHER.match(WEBHOOK_PATH, request.getRequestURI());
+        String uri = request.getRequestURI();
+        // Admin simulate endpoint uses JWT instead of X-API-Key.
+        if (uri.contains("/webhook/simulate")) {
+            return true;
+        }
+        return !PATH_MATCHER.match(WEBHOOK_PATH, uri);
     }
 
     @Override

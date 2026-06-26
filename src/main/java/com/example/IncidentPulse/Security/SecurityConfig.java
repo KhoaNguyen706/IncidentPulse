@@ -2,6 +2,7 @@ package com.example.IncidentPulse.Security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -21,10 +22,13 @@ public class SecurityConfig {
                                                    ApiKeyFilter apiKeyFilter) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
+                .cors(Customizer.withDefaults())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v*/auth/**").permitAll()
-                        // Webhook is permitted here; ApiKeyFilter enforces the X-API-Key.
+                        // JWT-protected demo endpoint; ApiKeyFilter skips /simulate.
+                        .requestMatchers("/api/v*/webhook/simulate").authenticated()
+                        // Public webhook alert; ApiKeyFilter enforces the X-API-Key.
                         .requestMatchers("/api/v*/webhook/**").permitAll()
                         // WebSocket handshake is permitted; the STOMP CONNECT frame
                         // is authenticated by StompAuthChannelInterceptor instead.

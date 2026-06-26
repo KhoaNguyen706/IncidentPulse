@@ -2,6 +2,8 @@
 # All secrets come from a .env file next to this one (see .env.example).
 # Memory limits + JVM caps are sized to fit 1 GB; add 1-2 GB swap on the host.
 #
+# nginx on :80 serves the React build and proxies /api + /ws to Spring Boot.
+#
 #   docker compose -f docker-compose.prod.yml up -d --build
 #
 services:
@@ -13,7 +15,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     volumes:
-      - db-data:/var/lib/postgresql/data
+      # Postgres 18+ expects the mount at /var/lib/postgresql (not .../data).
+      - db-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-incidentpulse}"]
       interval: 10s
@@ -55,14 +58,29 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      APP_CORS_ORIGINS: ${APP_CORS_ORIGINS:-http://localhost}
       # Cap the heap so the JVM fits comfortably on a 1 GB box.
       JAVA_TOOL_OPTIONS: "-Xmx256m -Xss512k -XX:MaxMetaspaceSize=128m"
-    ports:
-      - "8080:8080"
+    expose:
+      - "8080"
     deploy:
       resources:
         limits:
           memory: 512m
+
+  nginx:
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+    deploy:
+      resources:
+        limits:
+          memory: 48m
 
 volumes:
   db-data:

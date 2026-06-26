@@ -36,10 +36,11 @@ public class UserMapperImpl implements UserMapper {
         }
 
         return UserResponse.builder()
-
+                .id(user.getId())
                 .name(user.getName())
                 .email(user.getEmail())
                 .username(user.getUsername())
+                .active(user.isActive())
                 .role(user.getRole())
                 .team(user.getTeam())
                 .createdAt(user.getCreatedAt())

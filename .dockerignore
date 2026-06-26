@@ -1,0 +1,9 @@
+target/
+.git/
+.idea/
+*.imd
+frontend/node_modules/
+frontend/dist/
+.env
+*.md
+!README.md

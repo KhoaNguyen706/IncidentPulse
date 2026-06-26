@@ -27,4 +27,5 @@ docker image prune -f >/dev/null 2>&1 || true
 echo "==> Status"
 docker compose -f "$COMPOSE_FILE" ps
 
-echo "==> Done. Tail logs with:  docker compose -f $COMPOSE_FILE logs -f app"
+echo "==> Done. Tail logs with:  docker compose -f $COMPOSE_FILE logs -f app nginx"
+echo "==> App URL: http://localhost/  (nginx on port 80)"
