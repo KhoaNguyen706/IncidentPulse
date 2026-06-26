@@ -2,10 +2,11 @@ package com.example.IncidentPulse.DTO.Request;
 
 import com.example.IncidentPulse.Model.Incident;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-
-import java.time.LocalDateTime;
 
 @Builder
 @AllArgsConstructor
@@ -15,8 +16,14 @@ import java.time.LocalDateTime;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class IncidentRequest {
-    String title;
-    Incident.severity severity;
-    String message;
 
+    @NotBlank
+    @Size(max = 200)
+    String title;
+
+    @NotNull
+    Incident.severity severity;
+
+    @NotBlank
+    String message;
 }

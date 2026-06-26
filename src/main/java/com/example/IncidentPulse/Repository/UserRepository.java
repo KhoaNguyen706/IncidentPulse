@@ -2,15 +2,12 @@ package com.example.IncidentPulse.Repository;
 
 import com.example.IncidentPulse.Model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
 @Repository
-public interface UserRepository extends JpaRepository<User,Long> {
+public interface UserRepository extends JpaRepository<User, Long> {
+
     Optional<User> findUserByUsername(String username);
-    
-    @Query(value = "SELECT * FROM users ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
-    Optional<User> findRandomUser();
 }

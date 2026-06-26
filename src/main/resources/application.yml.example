@@ -1,27 +1,28 @@
-# Example application.yml - DO NOT commit real secrets
+# Example application.yml - copy to application.yml and fill in real values.
+# DO NOT commit secrets. Every field below can be overridden by environment
+# variables (Spring's relaxed binding converts e.g. JWT_SECRET -> security.jwt.secretBase64).
+
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
 
 spring:
   application:
     name: Incident Pulse
   datasource:
-    url: jdbc:postgresql://localhost:5432/incidentpulse
-    username: <DB_USERNAME>
-    password: <DB_PASSWORD>
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/incidentpulse}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
   jpa:
-    defer-datasource-initialization: true
     hibernate:
-      ddl-auto: update
-      naming:
-        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
-    show-sql: true
+      # dev: update | prod: validate (and use Flyway/Liquibase for migrations)
+      ddl-auto: ${SPRING_JPA_DDL_AUTO:update}
+    show-sql: ${SPRING_JPA_SHOW_SQL:false}
   mail:
-    host: smtp.gmail.com
-    port: 587
-    username: <MAIL_USERNAME>
-    password: <MAIL_PASSWORD>
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -29,21 +30,31 @@ spring:
           starttls:
             enable: true
 
-# Optional: override with environment variable
-# spring.mail.password: ${MAIL_PASSWORD}
+# Actuator - expose only what you need in production
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
 
 app:
   email:
-    default-recipient: anhkhoa17092006@gmail.com
+    # Fallback recipient when an incident has no assignee email.
+    default-recipient: ${APP_EMAIL_DEFAULT_RECIPIENT:}
+  admin:
+    # Seeded only when no user with this username exists yet.
+    username: ${APP_ADMIN_USERNAME:admin}
+    email: ${APP_ADMIN_EMAIL:admin@incidentpulse.local}
+    password: ${APP_ADMIN_PASSWORD:admin123}
 
 auth:
   refresh:
-    days: 14
+    days: ${AUTH_REFRESH_DAYS:14}
 
 security:
   jwt:
     # Generate with: openssl rand -base64 32
-    secretBase64: <BASE64_SECRET_AT_LEAST_32_BYTES>
-    issuer: incidentpulse
-    audience: incidentpulse-api
-    accessTokenMinutes: 15
+    secretBase64: ${JWT_SECRET:CHANGE_ME_BASE64_AT_LEAST_32_BYTES_CHANGE_ME}
+    issuer: ${JWT_ISSUER:incidentpulse}
+    audience: ${JWT_AUDIENCE:incidentpulse-api}
+    accessTokenMinutes: ${JWT_ACCESS_MINUTES:15}

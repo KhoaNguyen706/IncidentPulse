@@ -20,7 +20,7 @@ public class EmailService {
 
     @Autowired
     public EmailService(JavaMailSender mailSender, @Value("${spring.mail.username:}") String from,
-                        @Value("${app.email.default-recipient:anhkhoa17092006@gmail.com}") String defaultRecipient){
+                        @Value("${app.email.default-recipient:}") String defaultRecipient){
         this.mailSender = mailSender;
         this.from = from;
         this.defaultRecipient = defaultRecipient;

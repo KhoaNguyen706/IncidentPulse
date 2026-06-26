@@ -7,6 +7,7 @@ import com.example.IncidentPulse.DTO.Request.UserRequest;
 import com.example.IncidentPulse.DTO.Response.UpdatedUserResponse;
 import com.example.IncidentPulse.DTO.Response.UserResponse;
 import com.example.IncidentPulse.Service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -42,7 +43,7 @@ public class UserController {
     }
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
-    public  ApiResponse<UserResponse> createAUser(@RequestBody UserRequest userRequest){
+    public ApiResponse<UserResponse> createAUser(@Valid @RequestBody UserRequest userRequest){
             UserResponse userResponse = userService.addAUser(userRequest);
             return ApiResponse.<UserResponse>builder()
                     .code(201)
@@ -55,7 +56,8 @@ public class UserController {
     }
     @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{id}")
-    public ApiResponse<UpdatedUserResponse> updateAUser(@PathVariable Long id, @RequestBody UpdatedUserRequest updatedUserRequest){
+    public ApiResponse<UpdatedUserResponse> updateAUser(@PathVariable Long id,
+                                                        @Valid @RequestBody UpdatedUserRequest updatedUserRequest){
         UpdatedUserResponse userResponse = userService.updateUser(id,updatedUserRequest);
         return ApiResponse.<UpdatedUserResponse>builder()
                 .code(200)

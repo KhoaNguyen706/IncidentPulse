@@ -3,6 +3,7 @@ package com.example.IncidentPulse.Auth;
 
 import com.example.IncidentPulse.DTO.Response.ApiResponse;
 import com.example.IncidentPulse.Service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -26,7 +27,7 @@ public class AuthenticationController {
     }
 
     @PostMapping("/login")
-    public ApiResponse<AuthenticationResponse> logIn(@RequestBody AuthenticationRequest authenticationRequest){
+    public ApiResponse<AuthenticationResponse> logIn(@Valid @RequestBody AuthenticationRequest authenticationRequest){
         AuthenticationResponse authenticationResponse = authenticationService.logIn(authenticationRequest);
         return ApiResponse.<AuthenticationResponse>builder()
                 .code(200)
@@ -38,7 +39,7 @@ public class AuthenticationController {
     }
 
     @PostMapping("/refresh")
-    public ApiResponse<AuthenticationResponse> refresh(@RequestBody RefreshRequest refreshRequest){
+    public ApiResponse<AuthenticationResponse> refresh(@Valid @RequestBody RefreshRequest refreshRequest){
         AuthenticationResponse authenticationResponse = authenticationService.refresh(refreshRequest.getRefreshToken());
 
         return ApiResponse.<AuthenticationResponse>

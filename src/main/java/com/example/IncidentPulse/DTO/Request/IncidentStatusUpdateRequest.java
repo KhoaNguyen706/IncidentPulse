@@ -2,6 +2,7 @@ package com.example.IncidentPulse.DTO.Request;
 
 import com.example.IncidentPulse.Model.Incident;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -15,6 +16,7 @@ import lombok.experimental.FieldDefaults;
 public class IncidentStatusUpdateRequest {
 
     // The status we want to move the incident TO.
+    @NotNull
     Incident.status status;
 
     // Optional human note explaining the change (saved into the history trail).

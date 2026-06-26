@@ -7,6 +7,7 @@ import com.example.IncidentPulse.DTO.Response.ApiResponse;
 import com.example.IncidentPulse.DTO.Response.IncidentHistoryResponse;
 import com.example.IncidentPulse.DTO.Response.IncidentResponse;
 import com.example.IncidentPulse.Service.IncidentService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -27,7 +28,7 @@ public class IncidentController {
     }
 
     @PostMapping
-    public ApiResponse<IncidentResponse> createIncident (@RequestBody IncidentRequest incidentRequest){
+    public ApiResponse<IncidentResponse> createIncident(@Valid @RequestBody IncidentRequest incidentRequest){
         IncidentResponse incidentResponse = incidentService.createIncident(incidentRequest);
         return ApiResponse.<IncidentResponse>builder()
                 .code(201)
@@ -49,7 +50,8 @@ public class IncidentController {
     }
 
     @PatchMapping("/{incidentId}")
-    public ApiResponse<IncidentResponse> updateIncident(@PathVariable Long incidentId, @RequestBody IncidentRequest incidentRequest){
+    public ApiResponse<IncidentResponse> updateIncident(@PathVariable Long incidentId,
+                                                        @Valid @RequestBody IncidentRequest incidentRequest){
         IncidentResponse incidentResponse = incidentService.updateIncident(incidentId, incidentRequest);
         return ApiResponse.<IncidentResponse>builder()
                 .code(200)
@@ -62,7 +64,7 @@ public class IncidentController {
     @PreAuthorize("hasAnyRole('ENGINEER','ADMIN')")
     @PatchMapping("/{id}/status")
     public ApiResponse<IncidentResponse> updateStatus(@PathVariable Long id,
-                                                      @RequestBody IncidentStatusUpdateRequest request){
+                                                      @Valid @RequestBody IncidentStatusUpdateRequest request){
         IncidentResponse incidentResponse = incidentService.updateStatus(id, request);
         return ApiResponse.<IncidentResponse>builder()
                 .code(200)
