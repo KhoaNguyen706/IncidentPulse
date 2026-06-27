@@ -11,6 +11,7 @@ import { IncidentsPage } from './pages/IncidentsPage';
 import { IntegrationsPage } from './pages/IntegrationsPage';
 import { LoginPage } from './pages/LoginPage';
 import { MyIncidentPage } from './pages/MyIncidentPage';
+import { OnCallPage } from './pages/OnCallPage';
 
 function AppLayout() {
   const { connected } = useLiveFeed();
@@ -30,11 +31,13 @@ export default function App() {
               <Route path="incidents/new" element={<CreateIncidentPage />} />
               <Route path="incidents/:id" element={<IncidentDetailPage />} />
               <Route path="my-incident" element={<MyIncidentPage />} />
+              <Route path="oncall" element={<OnCallPage />} />
               <Route path="integrations" element={<IntegrationsPage />} />
               <Route element={<AdminRoute />}>
                 <Route path="admin/users" element={<AdminUsersPage />} />
+                <Route path="admin/oncall" element={<AdminOnCallPage />} />
               </Route>
-              <Route path="admin/on-call" element={<AdminOnCallPage />} />
+              <Route path="admin/on-call" element={<Navigate to="/admin/oncall" replace />} />
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/incidents" replace />} />

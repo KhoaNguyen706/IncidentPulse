@@ -24,6 +24,7 @@ public class UserMapperImpl implements UserMapper {
         user.setUsername(userRequest.getUsername());
         user.setRole(userRequest.getRole());
         user.setTeam(userRequest.getTeam());
+        user.setActive(userRequest.isActive());
         // hashedPassword, id, and createdAt are not set (ignored)
 
         return user;

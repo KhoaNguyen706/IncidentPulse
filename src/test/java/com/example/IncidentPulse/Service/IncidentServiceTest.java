@@ -194,8 +194,8 @@ class IncidentServiceTest {
     // ---------------------------------------------------------------------
 
     @Test
-    @DisplayName("getMyIncident: returns the incident assigned to the current user")
-    void getMyIncident_returnsAssignedIncident() {
+    @DisplayName("getMyIncidents: returns incidents assigned to the current user")
+    void getMyIncidents_returnsAssignedIncidents() {
         Authentication authentication = org.mockito.Mockito.mock(Authentication.class);
         User user = userWithId(7L, "eng");
 
@@ -210,25 +210,41 @@ class IncidentServiceTest {
 
         when(authentication.getName()).thenReturn("eng");
         when(userRepository.findUserByUsername("eng")).thenReturn(Optional.of(user));
-        when(incidentRepository.findIncidentByAssignedTo(user)).thenReturn(incident);
+        when(incidentRepository.findByAssignedTo_IdOrderByUpdatedAtDesc(7L))
+                .thenReturn(java.util.List.of(incident));
         when(userMapper.toResponse(any(User.class)))
                 .thenReturn(UserResponse.builder().username("reporter").build());
 
-        IncidentResponse result = incidentService.getMyIncident(authentication);
+        java.util.List<IncidentResponse> result = incidentService.getMyIncidents(authentication);
 
-        assertThat(result.getTitle()).isEqualTo("Disk full");
-        assertThat(result.getStatus()).isEqualTo(Incident.status.INVESTIGATING);
-        assertThat(result.getSeverity()).isEqualTo(Incident.severity.SEV2);
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getTitle()).isEqualTo("Disk full");
+        assertThat(result.get(0).getStatus()).isEqualTo(Incident.status.INVESTIGATING);
+        assertThat(result.get(0).getSeverity()).isEqualTo(Incident.severity.SEV2);
     }
 
     @Test
-    @DisplayName("getMyIncident: throws USER_NOT_FOUND when the principal has no record")
-    void getMyIncident_throwsWhenUserMissing() {
+    @DisplayName("getMyIncidents: returns an empty list when nothing is assigned")
+    void getMyIncidents_returnsEmptyList() {
+        Authentication authentication = org.mockito.Mockito.mock(Authentication.class);
+        User user = userWithId(7L, "eng");
+
+        when(authentication.getName()).thenReturn("eng");
+        when(userRepository.findUserByUsername("eng")).thenReturn(Optional.of(user));
+        when(incidentRepository.findByAssignedTo_IdOrderByUpdatedAtDesc(7L))
+                .thenReturn(java.util.List.of());
+
+        assertThat(incidentService.getMyIncidents(authentication)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("getMyIncidents: throws USER_NOT_FOUND when the principal has no record")
+    void getMyIncidents_throwsWhenUserMissing() {
         Authentication authentication = org.mockito.Mockito.mock(Authentication.class);
         when(authentication.getName()).thenReturn("ghost");
         when(userRepository.findUserByUsername("ghost")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> incidentService.getMyIncident(authentication))
+        assertThatThrownBy(() -> incidentService.getMyIncidents(authentication))
                 .isInstanceOf(AppException.class)
                 .extracting(ex -> ((AppException) ex).getErrorCode())
                 .isEqualTo(ErrorCode.USER_NOT_FOUND);
@@ -241,11 +257,13 @@ class IncidentServiceTest {
     @Test
     @DisplayName("updateStatus: allows OPENED -> INVESTIGATING and records history")
     void updateStatus_allowsValidTransition() {
+        User assignee = userWithId(7L, "eng");
         Incident incident = Incident.builder()
                 .id(5L)
                 .title("API errors")
                 .status(Incident.status.OPENED)
                 .severity(Incident.severity.SEV2)
+                .assignedTo(assignee)
                 .build();
 
         com.example.IncidentPulse.DTO.Request.IncidentStatusUpdateRequest request =
@@ -259,7 +277,7 @@ class IncidentServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         try (MockedStatic<SecurityUtil> securityUtil = mockStatic(SecurityUtil.class)) {
-            securityUtil.when(SecurityUtil::getCurrentUser).thenReturn(userWithId(7L, "eng"));
+            securityUtil.when(SecurityUtil::getCurrentUser).thenReturn(assignee);
 
             IncidentResponse result = incidentService.updateStatus(5L, request);
 
@@ -271,11 +289,45 @@ class IncidentServiceTest {
     }
 
     @Test
-    @DisplayName("updateStatus: rejects an illegal transition (OPENED -> CLOSED) and writes no history")
-    void updateStatus_rejectsIllegalTransition() {
+    @DisplayName("updateStatus: rejects when the caller is not the assignee")
+    void updateStatus_rejectsNonAssignee() {
+        User assignee = userWithId(7L, "eng");
+        User other = userWithId(9L, "other");
         Incident incident = Incident.builder()
                 .id(5L)
                 .status(Incident.status.OPENED)
+                .assignedTo(assignee)
+                .build();
+
+        com.example.IncidentPulse.DTO.Request.IncidentStatusUpdateRequest request =
+                com.example.IncidentPulse.DTO.Request.IncidentStatusUpdateRequest.builder()
+                        .status(Incident.status.INVESTIGATING)
+                        .build();
+
+        when(incidentRepository.findById(5L)).thenReturn(Optional.of(incident));
+
+        try (MockedStatic<SecurityUtil> securityUtil = mockStatic(SecurityUtil.class)) {
+            securityUtil.when(SecurityUtil::getCurrentUser).thenReturn(other);
+
+            assertThatThrownBy(() -> incidentService.updateStatus(5L, request))
+                    .isInstanceOf(AppException.class)
+                    .extracting(ex -> ((AppException) ex).getErrorCode())
+                    .isEqualTo(ErrorCode.NOT_INCIDENT_ASSIGNEE);
+        }
+
+        verify(incidentHistoryRepository, org.mockito.Mockito.never())
+                .save(any(com.example.IncidentPulse.Model.IncidentHistory.class));
+        verify(incidentRepository, org.mockito.Mockito.never()).save(any(Incident.class));
+    }
+
+    @Test
+    @DisplayName("updateStatus: rejects an illegal transition (OPENED -> CLOSED) and writes no history")
+    void updateStatus_rejectsIllegalTransition() {
+        User assignee = userWithId(7L, "eng");
+        Incident incident = Incident.builder()
+                .id(5L)
+                .status(Incident.status.OPENED)
+                .assignedTo(assignee)
                 .build();
 
         com.example.IncidentPulse.DTO.Request.IncidentStatusUpdateRequest request =
@@ -285,10 +337,14 @@ class IncidentServiceTest {
 
         when(incidentRepository.findById(5L)).thenReturn(Optional.of(incident));
 
-        assertThatThrownBy(() -> incidentService.updateStatus(5L, request))
-                .isInstanceOf(AppException.class)
-                .extracting(ex -> ((AppException) ex).getErrorCode())
-                .isEqualTo(ErrorCode.INVALID_STATUS_TRANSITION);
+        try (MockedStatic<SecurityUtil> securityUtil = mockStatic(SecurityUtil.class)) {
+            securityUtil.when(SecurityUtil::getCurrentUser).thenReturn(assignee);
+
+            assertThatThrownBy(() -> incidentService.updateStatus(5L, request))
+                    .isInstanceOf(AppException.class)
+                    .extracting(ex -> ((AppException) ex).getErrorCode())
+                    .isEqualTo(ErrorCode.INVALID_STATUS_TRANSITION);
+        }
 
         verify(incidentHistoryRepository, org.mockito.Mockito.never())
                 .save(any(com.example.IncidentPulse.Model.IncidentHistory.class));

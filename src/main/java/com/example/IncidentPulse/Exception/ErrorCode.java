@@ -11,6 +11,7 @@ public enum ErrorCode {
     NO_ON_CALL_ENGINEER(404,"No on-call engineer is currently scheduled"),
     INCIDENT_NOT_FOUND(404,"Incident is not found!!!"),
     INVALID_STATUS_TRANSITION(400,"That incident status change is not allowed"),
+    NOT_INCIDENT_ASSIGNEE(403,"Only the assigned engineer can update this incident's status"),
     RATE_LIMITED(429,"Too many requests. Please try again later."),
     INVALID_API_KEY(401,"Invalid or missing API key");
     private final int code;

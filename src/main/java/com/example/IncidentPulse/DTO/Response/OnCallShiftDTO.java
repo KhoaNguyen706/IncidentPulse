@@ -19,7 +19,11 @@ public class OnCallShiftDTO implements Serializable {
     @java.io.Serial
     private static final long serialVersionUID = 1L;
 
+    Long id;
+
     UserResponse user;
     LocalDateTime startedAt;
     LocalDateTime endAt;
+    /** ACTIVE, UPCOMING, or ENDED — computed when building the DTO. */
+    String status;
 }

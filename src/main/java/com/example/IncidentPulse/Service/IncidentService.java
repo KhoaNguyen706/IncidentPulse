@@ -138,15 +138,13 @@ public class IncidentService {
     }
 
     @Transactional(readOnly = true)
-    public IncidentResponse getMyIncident(Authentication authentication) {
+    public List<IncidentResponse> getMyIncidents(Authentication authentication) {
         String username = authentication.getName();
         User user = userRepository.findUserByUsername(username)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        Incident incident = incidentRepository.findIncidentByAssignedTo(user);
-        if (incident == null) {
-            throw new AppException(ErrorCode.INCIDENT_NOT_FOUND);
-        }
-        return toResponse(incident);
+        return incidentRepository.findByAssignedTo_IdOrderByUpdatedAtDesc(user.getId()).stream()
+                .map(this::toResponse)
+                .toList();
     }
 
     /**
@@ -178,6 +176,12 @@ public class IncidentService {
         Incident incident = incidentRepository.findById(incidentId)
                 .orElseThrow(() -> new AppException(ErrorCode.INCIDENT_NOT_FOUND));
 
+        User actor = getCurrentUser();
+        User assignee = incident.getAssignedTo();
+        if (actor == null || assignee == null || !actor.getId().equals(assignee.getId())) {
+            throw new AppException(ErrorCode.NOT_INCIDENT_ASSIGNEE);
+        }
+
         Incident.status from = incident.getStatus();
         Incident.status to = request.getStatus();
 
@@ -187,8 +191,6 @@ public class IncidentService {
 
         incident.setStatus(to);
         incidentRepository.save(incident);
-
-        User actor = getCurrentUser();
         recordHistory(incident, actor, from, to, actionTypeFor(to), request.getNote());
 
         eventPublisher.publish(IncidentEvent.builder()

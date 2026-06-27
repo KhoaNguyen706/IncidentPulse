@@ -1,7 +1,7 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { apiFetch } from '../api/client';
-import { useAuth } from '../auth/AuthContext';
-import { RoleGate } from '../components/RoleGate';
+import { OnCallScheduleTable } from '../components/OnCallPanel';
 import type { OnCallShift, User } from '../types';
 
 function toLocalInput(iso: string): string {
@@ -17,8 +17,8 @@ function defaultShiftTimes() {
 }
 
 export function AdminOnCallPage() {
-  const { isAdmin } = useAuth();
-  const [current, setCurrent] = useState<OnCallShift | null>(null);
+  const location = useLocation();
+  const [schedule, setSchedule] = useState<OnCallShift[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -30,43 +30,54 @@ export function AdminOnCallPage() {
   const [endAt, setEndAt] = useState(defaults.end);
   const [submitting, setSubmitting] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      if (isAdmin) {
-        const [shift, allUsers] = await Promise.all([
-          apiFetch<OnCallShift>('/api/v1/on-call'),
-          apiFetch<User[]>('/api/v1/users'),
-        ]);
-        setCurrent(shift);
-        setUsers(allUsers);
-      }
+      const [allUsers, allShifts] = await Promise.all([
+        apiFetch<User[]>('/api/v1/users'),
+        apiFetch<OnCallShift[]>('/api/v1/on-call/shifts'),
+      ]);
+      setUsers(allUsers);
+      setSchedule(allShifts);
+      setUserId((prev) => {
+        if (prev && allUsers.some((u) => String(u.id) === prev)) return prev;
+        return '';
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load on-call data');
+      setError(err instanceof Error ? err.message : 'Failed to load on-call schedule');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     load();
-  }, [isAdmin]);
+  }, [load, location.key]);
 
-  const createShift = async (path: string) => {
+  const assignableUsers = users.filter(
+    (u) =>
+      u.active &&
+      u.id != null &&
+      (u.role === 'ENGINEER' || u.role === 'ADMIN'),
+  );
+
+  const shiftBody = () => ({
+    startedAt: new Date(startedAt).toISOString(),
+    endAt: new Date(endAt).toISOString(),
+  });
+
+  const createShift = async (path: string, successMessage: string) => {
     setSubmitting(true);
     setError('');
     setSuccess('');
     try {
-      const shift = await apiFetch<OnCallShift>(path, {
+      await apiFetch<OnCallShift>(path, {
         method: 'POST',
-        body: {
-          startedAt: new Date(startedAt).toISOString(),
-          endAt: new Date(endAt).toISOString(),
-        },
+        body: shiftBody(),
       });
-      setCurrent(shift);
-      setSuccess('On-call shift created.');
+      setSuccess(successMessage);
+      await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create shift');
     } finally {
@@ -74,60 +85,65 @@ export function AdminOnCallPage() {
     }
   };
 
-  const handleAdminSubmit = async (e: FormEvent) => {
+  const handleAssignEngineer = async (e: FormEvent) => {
     e.preventDefault();
     if (!userId) return;
-    await createShift(`/api/v1/on-call/${userId}`);
+    await createShift(
+      `/api/v1/on-call/${userId}`,
+      'On-call shift assigned. The engineer has been emailed.',
+    );
   };
 
-  const handleSelfSubmit = async (e: FormEvent) => {
+  const handleAssignSelf = async (e: FormEvent) => {
     e.preventDefault();
-    await createShift('/api/v1/on-call/me');
+    await createShift(
+      '/api/v1/on-call/me',
+      'You are now scheduled for on-call. A confirmation email has been sent.',
+    );
   };
 
-  if (loading) return <p className="muted">Loading on-call data...</p>;
+  if (loading) return <p className="muted">Loading schedule...</p>;
 
   return (
     <div>
-      <h1 className="page-title">On-Call</h1>
-
-      {current && (
-        <div className="card">
-          <h2 className="section-title">Current on-call</h2>
-          <p>
-            <strong>{current.user?.username}</strong> ({current.user?.team})
-          </p>
-          <p className="muted">
-            {new Date(current.startedAt).toLocaleString()} —{' '}
-            {new Date(current.endAt).toLocaleString()}
-          </p>
+      <div className="page-header">
+        <h1 className="page-title">Manage On-Call</h1>
+        <div className="header-actions">
+          <Link to="/oncall" className="btn btn-ghost">
+            View current on-call
+          </Link>
+          <button type="button" className="btn btn-ghost" onClick={load}>
+            Refresh
+          </button>
         </div>
-      )}
+      </div>
 
-      {!current && (
-        <div className="card">
-          <p className="muted">No active on-call shift configured.</p>
-        </div>
-      )}
+      <p className="muted">
+        Assign an engineer to an on-call window, or schedule yourself. The assignee receives an
+        email notification.
+      </p>
 
       {error && <p className="error">{error}</p>}
       {success && <p className="success">{success}</p>}
 
-      <RoleGate roles={['ADMIN']}>
+      <div className="card" style={{ marginTop: '1rem' }}>
+        <h2 className="section-title">On-call schedule</h2>
+        <OnCallScheduleTable shifts={schedule} />
+      </div>
+
+      <div className="detail-grid">
         <div className="card form-card">
-          <h2 className="section-title">Assign on-call shift (Admin)</h2>
-          <form onSubmit={handleAdminSubmit} className="form">
+          <h2 className="section-title">Assign engineer</h2>
+          <form onSubmit={handleAssignEngineer} className="form">
             <label>
               Engineer
               <select value={userId} onChange={(e) => setUserId(e.target.value)} required>
-                <option value="">Select user</option>
-                {users
-                  .filter((u) => u.role === 'ENGINEER' || u.role === 'ADMIN')
-                  .map((u) => (
-                    <option key={u.id ?? u.username} value={u.id}>
-                      {u.username} ({u.role})
-                    </option>
-                  ))}
+                <option value="">Select engineer</option>
+                {assignableUsers.map((u) => (
+                  <option key={u.id} value={String(u.id)}>
+                    {u.username} ({u.role}) — {u.email}
+                  </option>
+                ))}
               </select>
             </label>
             <label>
@@ -149,16 +165,15 @@ export function AdminOnCallPage() {
               />
             </label>
             <button type="submit" className="btn btn-primary" disabled={submitting}>
-              Create shift
+              Assign engineer
             </button>
           </form>
         </div>
-      </RoleGate>
 
-      <RoleGate roles={['ENGINEER', 'ADMIN']}>
         <div className="card form-card">
-          <h2 className="section-title">Self-service on-call</h2>
-          <form onSubmit={handleSelfSubmit} className="form">
+          <h2 className="section-title">Assign yourself</h2>
+          <p className="muted">Use the same start/end times as above, or change them first.</p>
+          <form onSubmit={handleAssignSelf} className="form">
             <label>
               Start
               <input
@@ -177,12 +192,12 @@ export function AdminOnCallPage() {
                 required
               />
             </label>
-            <button type="submit" className="btn btn-ghost" disabled={submitting}>
-              Set my on-call window
+            <button type="submit" className="btn btn-primary" disabled={submitting}>
+              Assign myself
             </button>
           </form>
         </div>
-      </RoleGate>
+      </div>
     </div>
   );
 }

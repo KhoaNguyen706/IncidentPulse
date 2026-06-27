@@ -60,13 +60,14 @@ public class IncidentController {
     }
 
     @GetMapping("/me")
-    public ApiResponse<IncidentResponse> getMyIncident(Authentication authentication){
-        IncidentResponse incidentResponse = incidentService.getMyIncident(authentication);
-        return ApiResponse.<IncidentResponse>builder()
+    public ApiResponse<List<IncidentResponse>> getMyIncidents(Authentication authentication){
+        List<IncidentResponse> incidents = incidentService.getMyIncidents(authentication);
+        return ApiResponse.<List<IncidentResponse>>builder()
                 .code(200)
+                .success(true)
                 .now(LocalDateTime.now())
-                .data(incidentResponse)
-                .message("get an incident successfully!!!")
+                .data(incidents)
+                .message("Assigned incidents retrieved successfully")
                 .build();
     }
 

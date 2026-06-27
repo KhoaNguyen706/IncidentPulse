@@ -17,7 +17,7 @@ import { STATUS_TRANSITIONS } from '../types';
 export function IncidentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
-  const { canUpdateStatus } = useAuth();
+  const { user, canUpdateStatus } = useAuth();
   const incidentId = Number(id);
 
   const [incident, setIncident] = useState<Incident | null>(
@@ -105,6 +105,11 @@ export function IncidentDetailPage() {
   if (!incident) return <p className="error">{error || 'Incident not found'}</p>;
 
   const nextStatuses = STATUS_TRANSITIONS[incident.status] ?? [];
+  const isAssignee =
+    user?.id != null &&
+    incident.assignedTo?.id != null &&
+    user.id === incident.assignedTo.id;
+  const canChangeStatus = canUpdateStatus && isAssignee && nextStatuses.length > 0;
 
   return (
     <div>
@@ -143,7 +148,16 @@ export function IncidentDetailPage() {
           </dl>
         </div>
 
-        {canUpdateStatus && nextStatuses.length > 0 && (
+        {canUpdateStatus && !isAssignee && nextStatuses.length > 0 && (
+          <div className="card">
+            <p className="muted">
+              Only <strong>{incident.assignedTo?.username ?? 'the assignee'}</strong> can update
+              this incident&apos;s status.
+            </p>
+          </div>
+        )}
+
+        {canChangeStatus && (
           <div className="card">
             <h2 className="section-title">Update Status</h2>
             <label>

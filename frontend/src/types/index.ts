@@ -78,9 +78,11 @@ export interface AuthTokens {
 }
 
 export interface OnCallShift {
+  id?: number;
   user: User;
   startedAt: string;
   endAt: string;
+  status?: 'ACTIVE' | 'UPCOMING' | 'ENDED';
 }
 
 export interface IncidentEvent {

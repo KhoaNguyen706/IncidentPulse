@@ -3,6 +3,13 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
 const ACCESS_KEY = 'ip_access';
 const REFRESH_KEY = 'ip_refresh';
 
+interface ApiEnvelope<T> {
+  success?: boolean;
+  data?: T;
+  message?: string;
+  code?: number;
+}
+
 export function getAccessToken(): string | null {
   return sessionStorage.getItem(ACCESS_KEY);
 }
@@ -46,6 +53,22 @@ type RequestOptions = Omit<RequestInit, 'body'> & {
   auth?: boolean;
 };
 
+function parseApiEnvelope<T>(rawText: string, status: number): ApiEnvelope<T> {
+  const trimmed = rawText.trim();
+  if (!trimmed) {
+    // 204 No Content or empty 200 — treat as success with no payload.
+    if (status >= 200 && status < 300) {
+      return { success: true, data: undefined };
+    }
+    throw new Error(`Empty response (${status})`);
+  }
+  try {
+    return JSON.parse(trimmed) as ApiEnvelope<T>;
+  } catch {
+    throw new Error(trimmed || `Invalid response (${status})`);
+  }
+}
+
 let refreshPromise: Promise<boolean> | null = null;
 
 async function refreshAccessToken(): Promise<boolean> {
@@ -60,7 +83,10 @@ async function refreshAccessToken(): Promise<boolean> {
 
   if (!res.ok) return false;
 
-  const json = await res.json();
+  const json = parseApiEnvelope<{ access: string; refresh: string }>(
+    await res.text(),
+    res.status,
+  );
   if (json.success && json.data?.access) {
     setTokens(json.data.access, json.data.refresh ?? refresh);
     return true;
@@ -93,7 +119,12 @@ export async function apiFetch<T>(
 
   if (auth) {
     const token = getAccessToken();
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (!token) {
+      clearTokens();
+      window.location.href = '/login';
+      throw new Error('Unauthorized');
+    }
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   const doFetch = () =>
@@ -120,16 +151,7 @@ export async function apiFetch<T>(
     throw new Error('Unauthorized');
   }
 
-  const rawText = await res.text();
-  // #region agent log
-  fetch('http://127.0.0.1:7757/ingest/a8176d9f-bf56-41d6-adcb-168fdd18384c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'00adae'},body:JSON.stringify({sessionId:'00adae',location:'client.ts:apiFetch:post',message:'api response',data:{path,status:res.status,bodyPreview:rawText.slice(0,120),origin:window.location.origin},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
-  let json: { success?: boolean; data?: T; message?: string };
-  try {
-    json = JSON.parse(rawText);
-  } catch {
-    throw new Error(rawText || `Request failed (${res.status})`);
-  }
+  const json = parseApiEnvelope<T>(await res.text(), res.status);
 
   if (!res.ok || json.success === false) {
     throw new Error(json.message ?? `Request failed (${res.status})`);
@@ -139,29 +161,22 @@ export async function apiFetch<T>(
 }
 
 export async function apiLogin(username: string, password: string) {
-  const url = `${API_BASE}/api/v1/auth/login`;
-  // #region agent log
-  fetch('http://127.0.0.1:7757/ingest/a8176d9f-bf56-41d6-adcb-168fdd18384c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'00adae'},body:JSON.stringify({sessionId:'00adae',location:'client.ts:apiLogin:pre',message:'login attempt',data:{url,origin:window.location.origin,apiBase:API_BASE||'(same-origin)'},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
-  const res = await fetch(url, {
+  const res = await fetch(`${API_BASE}/api/v1/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),
   });
-  const rawText = await res.text();
-  // #region agent log
-  fetch('http://127.0.0.1:7757/ingest/a8176d9f-bf56-41d6-adcb-168fdd18384c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'00adae'},body:JSON.stringify({sessionId:'00adae',location:'client.ts:apiLogin:post',message:'login response',data:{status:res.status,contentType:res.headers.get('content-type'),bodyPreview:rawText.slice(0,120),origin:window.location.origin},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
-  let json: { success?: boolean; data?: { access: string; refresh: string }; message?: string };
-  try {
-    json = JSON.parse(rawText);
-  } catch {
-    throw new Error(rawText || `Login failed (${res.status})`);
-  }
-  if (!res.ok || !json.success) {
+
+  const json = parseApiEnvelope<{ access: string; refresh: string }>(
+    await res.text(),
+    res.status,
+  );
+
+  if (!res.ok || !json.success || !json.data?.access) {
     throw new Error(json.message ?? 'Login failed');
   }
-  setTokens(json.data!.access, json.data!.refresh);
+
+  setTokens(json.data.access, json.data.refresh);
   return json.data;
 }
 

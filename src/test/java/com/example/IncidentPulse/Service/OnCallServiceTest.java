@@ -47,6 +47,9 @@ class OnCallServiceTest {
     @Mock
     private UserMapperImpl userMapper;
 
+    @Mock
+    private EmailService emailService;
+
     @InjectMocks
     private OnCallService onCallService;
 
@@ -125,6 +128,7 @@ class OnCallServiceTest {
         assertThat(saved.getStartedAt()).isEqualTo(request.getStartedAt());
         assertThat(saved.getEndAt()).isEqualTo(request.getEndAt());
         assertThat(saved.getCreatedAt()).isNotNull();
+        verify(emailService).sendOnCallShiftEmail(any(User.class), any(LocalDateTime.class), any(LocalDateTime.class));
     }
 
     @Test
@@ -165,6 +169,7 @@ class OnCallServiceTest {
 
         assertThat(result.getUser().getUsername()).isEqualTo("eng");
         verify(onCallShiftRepository).save(any(OnCallShift.class));
+        verify(emailService).sendOnCallShiftEmail(any(User.class), any(LocalDateTime.class), any(LocalDateTime.class));
     }
 
     @Test

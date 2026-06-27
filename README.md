@@ -1,5 +1,4 @@
 # IncidentPulse
-
 Problem:
 Imaging your api or a critical service goes down. 
 if you can not detect the issue, creat an incident, and assign on call engineer quickly. The business will lose thousands or even
@@ -132,7 +131,8 @@ When using nginx as a single entry point, the browser sees one origin — CORS i
 | `/my-incident` | Current assignment for the logged-in engineer |
 | `/integrations` | Webhook docs + admin simulate form |
 | `/admin/users` | User CRUD (ADMIN) |
-| `/admin/on-call` | On-call shift management |
+| `/oncall` | Who is on call now (all staff) |
+| `/admin/oncall` | Admin: assign engineer or self to on-call shifts |
 
 Theme: black & white ops dashboard.
 
