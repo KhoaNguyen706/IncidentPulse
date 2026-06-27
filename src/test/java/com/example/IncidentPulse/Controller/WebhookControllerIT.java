@@ -118,10 +118,11 @@ class WebhookControllerIT {
     }
 
     @Test
-    void simulate_withoutAuth_returns403() throws Exception {
+    void simulate_withoutAuth_returns401() throws Exception {
         mockMvc.perform(post("/api/v1/webhook/simulate")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(alertPayload("simulate-2")))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.data").value("UNAUTHORIZED"));
     }
 }
